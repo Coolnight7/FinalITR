@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Student-Teacher Portal</title>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 30px;
+      background-color: #1c1c1c;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #ffffff;
+    }
+
+   .logout-btn {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  background-color: #d29999;
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  font-size: 14px;
+  width: 70px;
+  cursor: pointer;
+  z-index: 999;
+  transition: 0.3s ease;
+}
+
+    .logout-btn:hover {
+      background-color: #f1c6c5;
+    }
+
+    main {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 90vh;
+      padding: 40px 20px;
+    }
+
+    .auth-container, .dashboard {
+      width: 100%;
+      max-width: 400px;
+      padding: 30px;
+      background-color: #1e1e1e;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.7);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #ffffff;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="file"],
+    textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      margin-bottom: 16px;
+      border: none;
+      border-radius: 5px;
+      background-color: #2c2c2c;
+      color: #f1f1f1;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background-color: #3a86ff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #265ecf;
+    }
+
+    .file-block {
+      background-color: #2b2b2b;
+      border: 1px solid #444;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    a {
+      color: #90caf9;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .role-buttons {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <button class="logout-btn hidden" onclick="logout()" id="logout-btn">Logout</button>
+  <header>
+    <h1>Student-Teacher Portal</h1>
+  </header>
+  
+  <main>
+    <div class="auth-container" id="role-selector">
+      <h2>Select Role</h2>
+      <div class="role-buttons">
+        <button onclick="showAuth('student')">Student</button>
+        <button onclick="showAuth('teacher')">Teacher</button>
+      </div>
+    </div>
+
+    <div class="auth-container hidden" id="auth-student">
+      <h2>Student Login / Register</h2>
+      <input type="email" id="student-email" placeholder="Email">
+      <input type="password" id="student-password" placeholder="Password">
+      <button onclick="register('student')">Register</button>
+      <button onclick="login('student')">Login</button>
+    </div>
+
+    <div class="auth-container hidden" id="auth-teacher">
+      <h2>Teacher Login / Register</h2>
+      <input type="email" id="teacher-email" placeholder="Email">
+      <input type="password" id="teacher-password" placeholder="Password">
+      <button onclick="register('teacher')">Register</button>
+      <button onclick="login('teacher')">Login</button>
+    </div>
+
+    <div class="dashboard hidden" id="student-dashboard">
+      <h2>Upload Your Work</h2>
+      <input type="file" id="upload-file">
+      <button onclick="uploadFile()">Upload</button>
+      <p id="upload-msg"></p>
+    </div>
+
+    <div class="dashboard hidden" id="teacher-dashboard">
+      <h2>Student Submissions</h2>
+      <button onclick="loadSubmissions()">Refresh</button>
+      <div id="submissions"></div>
+    </div>
+  </main>
+
+  <script>
+    const client = new Appwrite.Client()
+      .setEndpoint('https://fra.cloud.appwrite.io/v1')
+      .setProject('6880958d002993e579b3');
+
+    const account = new Appwrite.Account(client);
+    const storage = new Appwrite.Storage(client);
+    const database = new Appwrite.Databases(client);
+
+    const BUCKET_ID = '688096760038ed926d87';
+    const DB_ID = '68873d6e00198c3e8d87';
+    const COLLECTION_ID = 'submissions';
+
+    function showAuth(role) {
+      document.getElementById('role-selector').classList.add('hidden');
+      document.getElementById('auth-student').classList.add('hidden');
+      document.getElementById('auth-teacher').classList.add('hidden');
+      document.getElementById(`auth-${role}`).classList.remove('hidden');
+    }
+
+    async function register(role) {
+      const email = document.getElementById(`${role}-email`).value;
+      const password = document.getElementById(`${role}-password`).value;
+      try {
+        await account.create('unique()', email, password);
+        localStorage.setItem('role', role);
+        await login(role);
+      } catch (e) {
+        alert("Register failed: " + e.message);
+      }
+    }
+
+    async function login(role) {
+      const email = document.getElementById(`${role}-email`).value;
+      const password = document.getElementById(`${role}-password`).value;
+      try {
+        await account.createEmailSession(email, password);
+        localStorage.setItem('role', role);
+        showDashboard(role);
+      } catch (e) {
+        alert("Login failed: " + e.message);
+      }
+    }
+
+    async function showDashboard(role) {
+      document.getElementById('auth-student').classList.add('hidden');
+      document.getElementById('auth-teacher').classList.add('hidden');
+      document.getElementById('role-selector').classList.add('hidden');
+      document.getElementById('logout-btn').classList.remove('hidden');
+
+      if (role === 'student') {
+        document.getElementById('student-dashboard').classList.remove('hidden');
+      } else {
+        document.getElementById('teacher-dashboard').classList.remove('hidden');
+        loadSubmissions();
+      }
+    }
+
+    async function uploadFile() {
+      const fileInput = document.getElementById('upload-file');
+      const file = fileInput.files[0];
+      if (!file) return alert("No file selected");
+
+      try {
+        await storage.createFile(BUCKET_ID, 'unique()', file);
+        document.getElementById('upload-msg').innerText = "Uploaded: " + file.name;
+      } catch (e) {
+        alert("Upload failed: " + e.message);
+      }
+    }
+
+    async function loadSubmissions() {
+      try {
+        const files = await storage.listFiles(BUCKET_ID);
+        const container = document.getElementById('submissions');
+        container.innerHTML = '';
+        for (let f of files.files) {
+          const fileUrl = storage.getFileDownload(BUCKET_ID, f.$id);
+          container.innerHTML += `
+            <div class="file-block">
+              <p><strong>${f.name}</strong></p>
+              <a href="${fileUrl}" target="_blank">Download</a><br>
+              <textarea id="remark-${f.$id}" placeholder="Add remark..."></textarea><br>
+              <button onclick="saveRemark('${f.$id}')">Save Remark</button>
+            </div>`;
+        }
+      } catch (e) {
+        alert("Failed to load submissions: " + e.message);
+      }
+    }
+
+    async function saveRemark(fileId) {
+      const text = document.getElementById(`remark-${fileId}`).value;
+      try {
+        await database.createDocument(DB_ID, COLLECTION_ID, 'unique()', {
+          fileId: fileId,
+          remark: text
+        });
+        alert("Remark saved!");
+      } catch (e) {
+        alert("Failed to save remark: " + e.message);
+      }
+    }
+
+    async function logout() {
+      try {
+        await account.deleteSession('current');
+        localStorage.clear();
+        location.reload();
+      } catch (e) {
+        alert("Logout failed: " + e.message);
+      }
+    }
+
+    (async function autoLogin() {
+      try {
+        await account.get();
+        const role = localStorage.getItem('role');
+        if (role) showDashboard(role);
+      } catch (e) {
+        console.log("No active session.");
+      }
+    })();
+  </script>
+</body>
+</html>

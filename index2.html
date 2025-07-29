@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Student-Teacher Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #f8f8f8;
+      color: #111;
+      overflow-x: hidden;
+    }
+
+    header {
+      padding: 2rem 3rem;
+      background: #fff;
+      border-bottom: 2px solid #ddd;
+      position: relative;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 70%; height: 100%;
+      background: linear-gradient(to right, #f5f5f5, transparent);
+      transform: skewY(-3deg);
+      z-index: 0;
+    }
+
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 3rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logout-btn {
+      position: fixed;
+      top: 20px; right: 20px;
+      background-color: #222;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 20px;
+      width: 80px;
+      font-size: 14px;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    main {
+      padding: 3rem 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .auth-container{
+      width: 100%;
+      max-width: 440px;
+      padding: 2rem;
+      background: #fff;
+      border-left: 3px solid #111;
+      border-bottom: 2px solid #111;
+      align-items: left;
+    }
+    .dashboard {
+      width: 100%;
+      padding: 2rem;
+      background: #fff;
+      border-left: 3px solid #111;
+      border-bottom: 2px solid #111;
+      align-items: left;
+    }
+
+    h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      margin-bottom: 1.5rem;
+      color: #111;
+      border-bottom: 2px solid #111;
+      display: inline-block;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 12px 0;
+      border: none;
+      border-bottom: 2px solid #ccc;
+      background: transparent;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-bottom: 2px solid #111;
+    }
+
+    button {
+      padding: 12px;
+      width: 100%;
+      border: 2px solid #111;
+      background-color: transparent;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #111;
+      color: white;
+    }
+
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .file-card {
+      background: white;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .file-card p {
+      font-weight: 600;
+      margin: 0.5rem 0;
+    }
+
+    .uploader {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: auto;
+      margin-top: 10px;
+    }
+
+    .search-bar {
+      width: 100%;
+      max-width: 500px;
+      padding: 12px;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      border: 2px solid #111;
+      background: white;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .role-buttons {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .role-buttons button {
+      width: 48%;
+    }
+
+    a {
+      text-decoration: underline;
+      color: #111;
+    }
+#teacher-dashboard {
+  width: 100vw;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+ #submissions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem;
+  width: 100vw;       /* Use full viewport width */
+  margin: 0;          /* Remove auto-centering */
+  box-sizing: border-box;
+}
+
+
+
+.file-block {
+  background: #fff;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+
+.file-block img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.file-block p {
+  margin: 0.5rem 0 0;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.file-block .uploader {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: #777;
+}
+
+  </style>
+</head>
+<body>
+  <button class="logout-btn hidden" onclick="logout()" id="logout-btn">Logout</button>
+  <header><h1>Student–Teacher Portal</h1></header>
+
+  <main>
+    <div class="auth-container" id="role-selector">
+      <h2>Select Role</h2>
+      <div class="role-buttons">
+        <button onclick="showAuth('student')">Student</button>
+        <button onclick="showAuth('teacher')">Teacher</button>
+      </div>
+    </div>
+
+    <div class="auth-container hidden" id="auth-student">
+      <h2>Student Login / Register</h2>
+      <input type="email" id="student-email" placeholder="Email">
+      <input type="password" id="student-password" placeholder="Password">
+      <button onclick="register('student')">Register</button>
+      <button onclick="login('student')">Login</button>
+    </div>
+
+    <div class="auth-container hidden" id="auth-teacher">
+      <h2>Teacher Login / Register</h2>
+      <input type="email" id="teacher-email" placeholder="Email">
+      <input type="password" id="teacher-password" placeholder="Password">
+      <button onclick="register('teacher')">Register</button>
+      <button onclick="login('teacher')">Login</button>
+    </div>
+
+    <div class="auth-container hidden" id="student-dashboard">
+      <h2>Upload Your Work</h2>
+      <input type="file" id="upload-file">
+      <button onclick="uploadFile()">Upload</button>
+      <p id="upload-msg"></p>
+    </div>
+
+    <div class="dashboard hidden" id="teacher-dashboard">
+      <h2>Student Submissions</h2>
+      <input type="text" id="search" class="search-bar" placeholder="Search by filename or username" oninput="filterSubmissions()">
+      <div id="submissions" class="file-grid"></div>
+    </div>
+  </main>
+
+  <script>
+    const client = new Appwrite.Client().setEndpoint('https://fra.cloud.appwrite.io/v1').setProject('6880958d002993e579b3');
+    const account = new Appwrite.Account(client);
+    const storage = new Appwrite.Storage(client);
+    const BUCKET_ID = '688096760038ed926d87';
+    const DB_ID = '68873d6e00198c3e8d87';
+    const COLLECTION_ID='submissions';
+
+    let userEmail = '';
+    const fileOwners = {}; // map of fileId -> email
+
+    async function register(role) {
+      const email = document.getElementById(`${role}-email`).value;
+      const password = document.getElementById(`${role}-password`).value;
+      try {
+        await account.create('unique()', email, password);
+        await login(role);
+      } catch (e) {
+        alert("Register failed: " + e.message);
+      }
+    }
+
+    async function login(role) {
+      const email = document.getElementById(`${role}-email`).value;
+      const password = document.getElementById(`${role}-password`).value;
+      try {
+        await account.createEmailSession(email, password);
+        userEmail = email;
+        localStorage.setItem('role', role);
+        showDashboard(role);
+      } catch (e) {
+        alert("Login failed: " + e.message);
+      }
+    }
+
+    async function showDashboard(role) {
+      document.querySelectorAll('.auth-container').forEach(el => el.classList.add('hidden'));
+      document.getElementById('logout-btn').classList.remove('hidden');
+      if (role === 'student') {
+        document.getElementById('student-dashboard').classList.remove('hidden');
+      } else {
+        document.getElementById('teacher-dashboard').classList.remove('hidden');
+        loadSubmissions();
+      }
+    }
+
+    async function uploadFile() {
+      const fileInput = document.getElementById('upload-file');
+      const file = fileInput.files[0];
+      if (!file) return alert("No file selected");
+      try {
+        const uploaded = await storage.createFile(BUCKET_ID, 'unique()', file);
+        // Store uploader info using metadata
+        alert("Uploaded: " + file.name);
+      } catch (e) {
+        alert("Upload failed: " + e.message);
+      }
+    }
+
+   async function loadSubmissions() {
+  try {
+    const files = await storage.listFiles(BUCKET_ID);
+    const container = document.getElementById('submissions');
+    container.innerHTML = '';
+
+    for (let f of files.files) {
+      const fileUrl = storage.getFileView(BUCKET_ID, f.$id);
+      const uploader = f.$permissions?.[0]?.split(':')[1] || "Unknown";
+
+      container.innerHTML += `
+        <div class="file-block">
+          <img src="${fileUrl}" alt="${f.name}" />
+          <p>${f.name}</p>
+          <div class="uploader">@${uploader}</div>
+          <a href="${fileUrl}" target="_blank">Download</a>
+        </div>
+      `;
+    }
+  } catch (e) {
+    alert("Failed to load submissions: " + e.message);
+  }
+}
+
+
+
+    async function saveRemark(fileId) {
+      const text = document.getElementById(`remark-${fileId}`).value;
+      alert("Remark saved for " + fileId + ": " + text);
+      // You can integrate with Appwrite DB to save remarks here
+    }
+
+    async function logout() {
+      try {
+        await account.deleteSession('current');
+        localStorage.clear();
+        location.reload();
+      } catch (e) {
+        alert("Logout failed: " + e.message);
+      }
+    }
+
+    function showAuth(role) {
+      document.getElementById('role-selector').classList.add('hidden');
+      document.getElementById(`auth-${role}`).classList.remove('hidden');
+    }
+
+    function filterSubmissions() {
+      const query = document.getElementById('search').value.toLowerCase();
+      document.querySelectorAll('.file-card').forEach(card => {
+        const name = card.getAttribute('data-name');
+        const owner = card.getAttribute('data-owner');
+        card.style.display = (name.includes(query) || owner.includes(query)) ? 'flex' : 'none';
+      });
+    }
+
+    (async function autoLogin() {
+      try {
+        const user = await account.get();
+        userEmail = user.email;
+        const role = localStorage.getItem('role');
+        if (role) showDashboard(role);
+      } catch {
+        console.log("No active session.");
+      }
+    })();
+  </script>
+</body>
+</html>
